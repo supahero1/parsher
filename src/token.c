@@ -1,4 +1,8 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 #include <parsher/token.h>
+#include <parsher/except.h>
 
 
 static const uint8_t psh_lut_whitespace[] =
@@ -43,19 +47,45 @@ static const uint8_t psh_lut_symbols[] =
 };
 
 
-#define psh_add_token(type)             \
-do                                      \
-{                                       \
-    out->tokens[out->tokens_len++] =    \
-    (struct psh_token)                  \
-    {                                   \
-        .start = start,                 \
-        .end = end,                     \
-        .type = (type)                  \
-    };                                  \
-                                        \
-    goto start;                         \
-}                                       \
+static void
+psh_atleast_token(struct psh_tokens* const out)
+{
+    if(out->used < out->size)
+    {
+        return;
+    }
+
+    if(out->size == 0)
+    {
+        out->size = 16;
+    }
+
+    out->size <<= 1;
+
+    out->tokens = realloc(out->tokens, sizeof(struct psh_token) * out->size);
+
+    if(out->tokens == NULL)
+    {
+        psh_nomem();
+    }
+}
+
+
+#define psh_add_token(_type)    \
+do                              \
+{                               \
+    psh_atleast_token(out);     \
+                                \
+    out->tokens[out->used++] =  \
+    (struct psh_token)          \
+    {                           \
+        .start = start,         \
+        .end = end,             \
+        .type = (_type)         \
+    };                          \
+                                \
+    goto start;                 \
+}                               \
 while(0)
 
 
@@ -94,7 +124,7 @@ while(0)
 enum psh_status
 psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 {
-    const char* in = src->in;
+    const uint8_t* in = src->in;
 
     uint64_t idx = 0;
 
@@ -151,11 +181,10 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
              *
              * 1. Next char is a '/' - this is a single-line comment,
              *
-             * 2. Next char is a '*' - scan until the next unescaped '/'.
-             *    If there's an unescaped '*' at the end as well, this is a
-             *    multi-line comment. Otherwise, this is a regexp.
+             * 2. Next char is a '*' - this is a multi-line comment,
              *
-             * 3. Previous token was a symbol or none - this is a regexp,
+             * 3. Previous token was none or a symbol or
+             *    a reserved keyword - this is a regexp,
              *
              * 4. This is a division symbol.
              *
@@ -186,45 +215,72 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
             {
                 while(idx < src->len)
                 {
-                    if(*in == '/' && *(in - 1) != '\\')
+                    psh_next_byte();
+
+                    if(*in == '/' && *(in - 1) == '*')
                     {
                         break;
                     }
-
-                    psh_next_byte();
                 }
 
                 psh_atleast(0);
-
-                const int is_regexp =
-                    end - start == 3 || *(in - 1) != '*' || *(in - 2) == '\\';
-
                 psh_next_byte();
-
-                if(is_regexp)
-                {
-                    psh_add_token(psh_token_regexp);
-                }
-
                 psh_add_token(psh_token_comment);
             }
 
             if(last_type == psh_token_symbol || last_type == psh_token_none)
-            {
+            { /* or if previous psh_token_word was await or smthing special */
+                uint8_t in_group = 0;
+                uint8_t escaped = 0;
+
                 while(idx < src->len)
                 {
-                    const int stop = (*in == '/' && *(in - 1) != '\\');
+                    /**
+                     * Checking for a newline character is not the tokenizer's
+                     * job. Overall, validating the input is not done here.
+                    */
+
+                    if(*in == '\\')
+                    {
+                        if(escaped)
+                        {
+                            /* Escape an escape = no more escape */
+
+                            escaped = 0;
+                        }
+                        else
+                        {
+                            escaped = 1;
+                        }
+                    }
+                    else if(escaped == 0)
+                    {
+                        if(in_group == 0)
+                        {
+                            if(*in == '[')
+                            {
+                                in_group = 1;
+                            }
+                            else if(*in == '/')
+                            {
+                                break;
+                            }
+                        }
+                        else if(*in == ']')
+                        {
+                            in_group = 0;
+                        }
+                    }
+                    else
+                    {
+                        escaped = 0;
+                    }
 
                     psh_next_byte();
-
-                    if(stop)
-                    {
-                        break;
-                    }
                 }
 
                 psh_atleast(0);
-
+                psh_next_byte();
                 psh_add_token(psh_token_regexp);
             }
 
@@ -233,6 +289,8 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 
         if(psh_lut_symbols[*in] == 1)
         {
+            last_type = psh_token_symbol;
+
             psh_next_byte();
             psh_add_token(psh_token_symbol);
         }

@@ -35,11 +35,12 @@ struct psh_tokens
 {
     struct psh_token* tokens;
 
-    uint64_t tokens_len;
+    uint64_t used;
+    uint64_t size;
 };
 
 
-extern int
+extern enum psh_status
 psh_tokenize(const struct psh_source* const, struct psh_tokens* const);
 
 
