@@ -3,10 +3,11 @@
 
 #include <parsher/except.h>
 
+
 void
 psh_nomem(void)
 {
-    fprintf(stderr, "parsher: no memory\n");
+	(void) fprintf(stderr, "parsher: no memory\n");
 
-    exit(EXIT_FAILURE);
+	exit(EXIT_FAILURE);
 }

@@ -3,65 +3,36 @@
 
 #include <parsher/source.h>
 
+
 int
 main()
 {
-    const char* str = "\xEF\xBB\xBF#!/bin/bash\na";
+	struct psh_source in;
+	struct psh_source out;
 
-    assert(psh_sanitize(
-        &(
-            (struct psh_source)
-            {
-                .in = (uint8_t*) str,
-                .len = sizeof(str) - 1
-            }
-        ),
-        &(
-            (struct psh_source)
-            {
-                .in = (uint8_t*) str + 15,
-                .len = 1
-            }
-        )
-    ) == psh_ok);
+	in.arr = (uint8_t*) "\xEF\xBB\xBF#!/bin/bash\na";
+	in.len = 16;
+	out = in;
 
-    str = "abcd";
+	assert(psh_sanitize(&out) == psh_ok);
+	assert(out.arr == in.arr + 15);
+	assert(out.len == 1);
 
-    assert(psh_sanitize(
-        &(
-            (struct psh_source)
-            {
-                .in = (uint8_t*) str,
-                .len = sizeof(str) - 1
-            }
-        ),
-        &(
-            (struct psh_source)
-            {
-                .in = (uint8_t*) str,
-                .len = sizeof(str) - 1
-            }
-        )
-    ) == psh_ok);
+	in.arr = (uint8_t*) "abcd";
+	in.len = 4;
+	out = in;
 
-    str = "a";
+	assert(psh_sanitize(&out) == psh_ok);
+	assert(out.arr == in.arr);
+	assert(out.len == in.len);
 
-    assert(psh_sanitize(
-        &(
-            (struct psh_source)
-            {
-                .in = (uint8_t*) str,
-                .len = sizeof(str) - 1
-            }
-        ),
-        &(
-            (struct psh_source)
-            {
-                .in = (uint8_t*) str,
-                .len = sizeof(str) - 1
-            }
-        )
-    ) == psh_ok);
+	in.arr = NULL;
+	in.len = 0;
+	out = in;
 
-    return 0;
+	assert(psh_sanitize(&out) == psh_ok);
+	assert(out.arr == in.arr);
+	assert(out.len == in.len);
+
+	return 0;
 }

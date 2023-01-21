@@ -11,7 +11,7 @@ extern "C" {
 
 struct psh_source
 {
-    const uint8_t* in;
+    const uint8_t* arr;
 
     uint64_t len;
 };
@@ -25,7 +25,7 @@ enum psh_status
 
 
 extern int
-psh_sanitize(const struct psh_source* const, struct psh_source* const);
+psh_sanitize(struct psh_source* const);
 
 
 #ifdef __cplusplus

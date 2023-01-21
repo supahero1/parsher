@@ -1,40 +1,45 @@
 #include <parsher/source.h>
 
+
 int
-psh_sanitize(const struct psh_source* const src, struct psh_source* const out)
+psh_sanitize(struct psh_source* const src)
 {
-    const uint8_t* in = src->in;
+	const uint8_t* in = src->arr;
 
-    uint64_t len = src->len;
+	uint64_t len = src->len;
 
-    if(len >= 3 && *in == 0xEF && *(in + 1) == 0xBB && *(in + 2) == 0xBF)
-    {
-        in += 3;
-        len -= 3;
-    }
+	/* Unicode BOM mark */
+	if(len >= 3 && *in == 0xEF && *(in + 1) == 0xBB && *(in + 2) == 0xBF)
+	{
+		in += 3;
+		len -= 3;
+	}
 
-    if(len >= 2 && *in == '#' && *(in + 1) == '!')
-    {
-        uint64_t idx = 2;
+	/* Shebang */
+	if(len >= 2 && *in == '#' && *(in + 1) == '!')
+	{
+		uint64_t idx = 2;
 
-        while(idx < len)
-        {
-            const int stop = (*in != '\n');
+		in += 2;
 
-            ++idx;
-            ++in;
+		while(idx < len)
+		{
+			const int stop = (*in == '\n');
 
-            if(stop)
-            {
-                break;
-            }
-        }
+			++idx;
+			++in;
 
-        len = idx - len;
-    }
+			if(stop)
+			{
+				break;
+			}
+		}
 
-    out->in = in;
-    out->len = len;
+		len -= idx;
+	}
 
-    return psh_ok;
+	src->arr = in;
+	src->len = len;
+
+	return psh_ok;
 }

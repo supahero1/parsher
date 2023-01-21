@@ -1,0 +1,12 @@
+%{
+#include <string.h>
+
+#include <parsher/words.h>
+%}
+struct psh_word_lut
+{
+	const char* str;
+
+	const enum psh_word id;
+};
+%%
