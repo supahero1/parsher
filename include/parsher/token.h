@@ -32,7 +32,6 @@ struct psh_token
 	uint64_t len;
 
 	enum psh_token_type type;
-	int32_t regexp_word;
 };
 
 

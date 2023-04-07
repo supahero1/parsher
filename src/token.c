@@ -239,8 +239,7 @@ psh_tokenize(const struct psh_source* src, struct psh_tokens* out)
 		{							\
 			.token = in_prev,		\
 			.len = psh_token_len,	\
-			.type = _type,			\
-			.regexp_word = -1		\
+			.type = _type			\
 		}							\
 		)							\
 	)
@@ -356,7 +355,8 @@ psh_tokenize(const struct psh_source* src, struct psh_tokens* out)
 				psh_last_token->type == psh_token_symbol ||
 				(
 					psh_last_token->type == psh_token_word &&
-					psh_last_token->regexp_word != -1
+					psh_hash_lookup(&out->regexp_word_hashes, (char*)
+						psh_last_token->token, psh_last_token->len) != -1
 				) ||
 				psh_last_token->type == psh_token_none
 			)
@@ -569,8 +569,6 @@ psh_tokenize(const struct psh_source* src, struct psh_tokens* out)
 
 		psh_add_token(psh_token_word);
 		psh_set_as_last_token();
-		psh_last_token->regexp_word = psh_hash_lookup(&out->regexp_word_hashes,
-			(char*) psh_last_token->token, psh_last_token->len);
 	}
 
 #undef psh_add_token
@@ -590,5 +588,3 @@ psh_tokenize(const struct psh_source* src, struct psh_tokens* out)
 
 	return psh_unexpected_end;
 }
-
-#undef psh_add_token

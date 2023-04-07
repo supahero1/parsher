@@ -62,22 +62,15 @@ ifeq ($(BUILD_TYPE),$(BUILD_O))
 BUILD_SRC := $(BUILD_SRC:%.$(BUILD_LANG)=%.o)
 endif
 
-BUILD_NAME_STR_ERROR = You must define BUILD_NAME to use BUILD_TYPE=
+BUILD_NAME ?= $(PROJECT_NAME)
 
 ifeq ($(BUILD_TYPE),$(BUILD_LIB))
-ifeq ($(BUILD_NAME),)
-$(error $(BUILD_NAME_STR_ERROR)$$(BUILD_LIB))
-endif
 BUILD_SRC := $(BUILD_SRC:%.$(BUILD_LANG)=%.o) lib$(BUILD_NAME).$(BUILD_LIB_EXT)
 endif
 
 ifeq ($(BUILD_TYPE),$(BUILD_EXE))
 ifeq ($(BUILD_ALL),1)
-BUILD_SRC := $(BUILD_SRC:%.$(BUILD_LANG)=%.o)
-ifeq ($(BUILD_NAME),)
-$(error $(BUILD_NAME_STR_ERROR)$$(BUILD_EXE) and BUILD_ALL=1)
-endif
-BUILD_SRC += $(BUILD_NAME).exe
+BUILD_SRC := $(BUILD_SRC:%.$(BUILD_LANG)=%.o) $(BUILD_NAME).exe
 else
 BUILD_SRC := $(BUILD_SRC:%.$(BUILD_LANG)=%)
 endif

@@ -1,3 +1,5 @@
-
+BUILD_TYPE := $(BUILD_EXE)
+BUILD_ALL   = 1
+BUILD_LIBS := $(PROJECT_NAME)
 
 include $(DIR_TOP)/Rules.make

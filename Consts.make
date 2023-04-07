@@ -35,6 +35,10 @@ ifeq ($(DEBUG),1)
 CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -g3
 endif
 
+ifeq ($(GPROF),1)
+CFLAGS += -pg
+endif
+
 ifeq ($(COVERAGE),1)
 CFLAGS += --coverage
 endif

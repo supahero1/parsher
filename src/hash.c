@@ -32,7 +32,7 @@ psh_hash_init(struct psh_hashes* hashes, char** dict, uint32_t count)
 
 	cmph_config_destroy(config);
 
-	uint32_t size = count << 1;
+	uint32_t size = count;
 
 	hashes->hashes = malloc(sizeof(*hashes->hashes) * size);
 
@@ -43,13 +43,16 @@ psh_hash_init(struct psh_hashes* hashes, char** dict, uint32_t count)
 
 	hashes->dict = dict;
 
-	uint32_t max = 0;
-
 	for(uint32_t i = 0; i < count; ++i)
 	{
-		if(i >= size)
+		size_t len = strlen(dict[i]);
+
+		unsigned idx =
+			cmph_search(hashes->cmph, dict[i], len);
+
+		if(idx >= size)
 		{
-			size = i << 1;
+			size = idx + 1;
 
 			hashes->hashes =
 				realloc(hashes->hashes, sizeof(*hashes->hashes) * size);
@@ -60,25 +63,8 @@ psh_hash_init(struct psh_hashes* hashes, char** dict, uint32_t count)
 			}
 		}
 
-		if(i > max)
-		{
-			max = i;
-		}
-
-		size_t len = strlen(dict[i]);
-
-		unsigned idx =
-			cmph_search(hashes->cmph, dict[i], len);
-
 		hashes->hashes[idx].len = len;
 		hashes->hashes[idx].idx = i;
-	}
-
-	void* ptr = realloc(hashes->hashes, sizeof(*hashes->hashes) * max);
-
-	if(ptr)
-	{
-		hashes->hashes = ptr;
 	}
 }
 
