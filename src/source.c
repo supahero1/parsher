@@ -2,13 +2,14 @@
 
 
 int
-psh_sanitize(struct psh_source* const src)
+psh_sanitize(struct psh_source* src)
 {
 	const uint8_t* in = src->arr;
 
 	uint64_t len = src->len;
 
 	/* Unicode BOM mark */
+
 	if(len >= 3 && *in == 0xEF && *(in + 1) == 0xBB && *(in + 2) == 0xBF)
 	{
 		in += 3;
@@ -16,6 +17,7 @@ psh_sanitize(struct psh_source* const src)
 	}
 
 	/* Shebang */
+
 	if(len >= 2 && *in == '#' && *(in + 1) == '!')
 	{
 		uint64_t idx = 2;
@@ -24,7 +26,7 @@ psh_sanitize(struct psh_source* const src)
 
 		while(idx < len)
 		{
-			const int stop = (*in == '\n');
+			int stop = (*in == '\n');
 
 			++idx;
 			++in;

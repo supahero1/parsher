@@ -4,6 +4,7 @@
 /dev/words.gperf
 
 fuzz
+bench
 output/
 
 .vscode

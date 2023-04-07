@@ -5,9 +5,8 @@
 extern "C" {
 #endif
 
-
-#include <stdint.h>
-
+#include <parsher/sem.h>
+#include <parsher/hash.h>
 #include <parsher/words.h>
 #include <parsher/source.h>
 
@@ -33,7 +32,7 @@ struct psh_token
 	uint64_t len;
 
 	enum psh_token_type type;
-	enum psh_word word;
+	int32_t regexp_word;
 };
 
 
@@ -43,11 +42,27 @@ struct psh_tokens
 
 	uint64_t used;
 	uint64_t size;
+
+	struct psh_hashes regexp_word_hashes;
+
+	sem_t producer;
 };
 
 
+extern void
+psh_tokens_init(struct psh_tokens* tokens);
+
+
+extern void
+psh_tokens_reset(struct psh_tokens* tokens);
+
+
+extern void
+psh_tokens_free(struct psh_tokens* tokens);
+
+
 extern enum psh_status
-psh_tokenize(const struct psh_source* const, struct psh_tokens* const);
+psh_tokenize(const struct psh_source* src, struct psh_tokens* out);
 
 
 #ifdef __cplusplus

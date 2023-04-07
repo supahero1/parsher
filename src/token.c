@@ -1,11 +1,8 @@
-#include <stdio.h>
-#include <alloca.h>
-#include <assert.h>
-#include <stdlib.h>
-#include <string.h>
-
+#include <parsher/rates.h>
 #include <parsher/token.h>
 #include <parsher/except.h>
+
+#define CASE_INSENSITIVE(code) ((code) & ~32)
 
 
 static const uint8_t psh_lut_whitespace[] =
@@ -94,9 +91,37 @@ static const uint8_t psh_lut_word[] =
 };
 
 
+void
+psh_tokens_init(struct psh_tokens* tokens)
+{
+	sem_init(&tokens->producer);
+	psh_hash_init(&tokens->regexp_word_hashes, psh_regexp_word_dict,
+		sizeof(psh_regexp_word_dict) / sizeof(psh_regexp_word_dict[0]));
+}
+
+
+void
+psh_tokens_reset(struct psh_tokens* tokens)
+{
+	tokens->used = 0;
+}
+
+
+void
+psh_tokens_free(struct psh_tokens* tokens)
+{
+	free(tokens->tokens);
+	psh_hash_free(&tokens->regexp_word_hashes);
+	sem_destroy(&tokens->producer);
+
+	tokens->tokens = NULL;
+	tokens->used = 0;
+	tokens->size = 0;
+}
+
 
 static void
-psh_alloc_token(struct psh_tokens* const out)
+psh_alloc_token(struct psh_tokens* out)
 {
 	if(out->size == 0)
 	{
@@ -105,7 +130,7 @@ psh_alloc_token(struct psh_tokens* const out)
 
 	out->size <<= 1;
 
-	out->tokens = realloc(out->tokens, sizeof(struct psh_token) * out->size);
+	out->tokens = realloc(out->tokens, sizeof(*out->tokens) * out->size);
 
 	if(out->tokens != NULL)
 	{
@@ -115,7 +140,7 @@ psh_alloc_token(struct psh_tokens* const out)
 	out->size >>= 1;
 	out->size += 1;
 
-	out->tokens = realloc(out->tokens, sizeof(struct psh_token) * out->size);
+	out->tokens = realloc(out->tokens, sizeof(*out->tokens) * out->size);
 
 	if(out->tokens != NULL)
 	{
@@ -126,79 +151,53 @@ psh_alloc_token(struct psh_tokens* const out)
 }
 
 
-static void
-psh_hash_word(struct psh_token* const tok)
+static struct psh_token token_none = { .type = psh_token_none };
+
+
+static struct psh_token*
+psh_add_token_(struct psh_tokens* out,
+	struct psh_token* last_token, const struct psh_token token)
 {
-	if(tok->word != psh_word_unknown || tok->len > psh_max_word_len)
+	struct psh_token* ret = last_token;
+
+	if(out->used >= out->size)
 	{
-		return;
+		void* old = out->tokens;
+
+		psh_alloc_token(out);
+
+		if(last_token != &token_none && out->tokens != old)
+		{
+			ret = (struct psh_token*)(
+				+ (uintptr_t) last_token
+				- (uintptr_t) old
+				+ (uintptr_t) out->tokens
+			);
+		}
 	}
 
-	char* const str = alloca(psh_max_word_len + 1);
+	out->tokens[out->used++] = token;
 
-	(void) memcpy(str, tok->token, tok->len);
-
-	str[tok->len] = 0;
-
-	const struct psh_word_lut* const word = psh_lookup_word(str, tok->len);
-
-	if(word == NULL)
+	if(out->used % psh_rate_tokenizer == 0)
 	{
-		return;
+		sem_post(&out->producer, psh_rate_tokenizer);
 	}
 
-	tok->word = word->id;
-}
-
-
-static int
-psh_is_regexp_keyword(const struct psh_token* const tok)
-{
-	return tok->word > psh_word_unknown &&
-		tok->word < psh_word_preregexp_end;
+	return ret;
 }
 
 
 enum psh_status
-psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
+psh_tokenize(const struct psh_source* src, struct psh_tokens* out)
 {
 	const uint8_t* in = src->arr;
 	const uint8_t* in_prev;
-	const uint8_t* const in_end = in + src->len;
+	const uint8_t* in_end = in + src->len;
 
-	struct psh_token psh_none_token = {0};
-	struct psh_token* psh_last_token = &psh_none_token;
+	struct psh_token* psh_last_token = &token_none;
 
 	uint64_t psh_nest = 0;
 	uint64_t psh_template_nest = 0;
-
-
-#define psh_add_token(_type)								\
-	do														\
-	{														\
-		if(out->used >= out->size)							\
-		{													\
-			const uintptr_t old = (uintptr_t) out->tokens;	\
-															\
-			psh_alloc_token(out);							\
-															\
-			if(psh_last_token != &psh_none_token)			\
-			{												\
-				psh_last_token = (uintptr_t) out->tokens +	\
-					(uintptr_t) psh_last_token - old;		\
-			}												\
-		}													\
-															\
-		out->tokens[out->used++] =							\
-		(struct psh_token)									\
-		{													\
-			.token = in_prev,								\
-			.len = (uintptr_t) in - (uintptr_t) in_prev,	\
-			.type = _type,									\
-			.word = psh_word_unknown						\
-		};													\
-	}														\
-	while(0)
 
 #define psh_set_as_last_token() (psh_last_token = out->tokens + out->used - 1)
 
@@ -213,7 +212,7 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 	{								\
 		if(in + num >= in_end)		\
 		{							\
-			goto err_unexpected;	\
+			goto goto_unexpected;	\
 		}							\
 	}								\
 	while(0)
@@ -232,6 +231,19 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 	}											\
 	while(0)
 
+#define psh_add_token(_type)		\
+	(psh_last_token =				\
+		psh_add_token_(out,			\
+		psh_last_token,				\
+		(struct psh_token)			\
+		{							\
+			.token = in_prev,		\
+			.len = psh_token_len,	\
+			.type = _type,			\
+			.regexp_word = -1		\
+		}							\
+		)							\
+	)
 
 	/**
 	 * Detection order:
@@ -248,7 +260,7 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 	 *
 	 * 6. psh_token_string
 	 *
-	 * 7. psh_token_template(end)
+	 * 7. psh_token_template(_end)
 	 *
 	 * 8. psh_token_word
 	 *
@@ -307,7 +319,7 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 			{
 				while(!psh_eof())
 				{
-					const int stop = (*in == '\n');
+					int stop = (*in == '\n');
 
 					psh_next_byte();
 
@@ -344,7 +356,7 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 				psh_last_token->type == psh_token_symbol ||
 				(
 					psh_last_token->type == psh_token_word &&
-					psh_is_regexp_keyword(psh_last_token)
+					psh_last_token->regexp_word != -1
 				) ||
 				psh_last_token->type == psh_token_none
 			)
@@ -363,7 +375,7 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 					{
 						if(escaped)
 						{
-							/* Escaped escape no more escapes. */
+							/* Escaped escape escapes no more. */
 
 							escaped = 0;
 						}
@@ -425,7 +437,7 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 					{
 						--psh_template_nest;
 
-						goto template_string;
+						goto goto_template_string;
 					}
 
 					--psh_nest;
@@ -445,7 +457,7 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 
 		/* Number */
 
-		const uint8_t char_code = *in - 48;
+		uint8_t char_code = *in - '0';
 
 		if(char_code <= 9)
 		{
@@ -456,7 +468,7 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 			while(!psh_eof() && (
 				psh_lut_number_chars[*in] == 1 ||
 				( /* Check if a plus/minus sign is allowed */
-					(*(in - 1) == 'e' || *(in - 1) == 'E') &&
+					CASE_INSENSITIVE(*(in - 1)) == 'E' &&
 					(*in == '+' || *in == '-')
 				)
 			));
@@ -487,7 +499,7 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 
 		if(*in == '"' || *in == '\'')
 		{
-			const uint8_t end = *in;
+			uint8_t end = *in;
 
 			do
 			{
@@ -505,14 +517,14 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 
 		if(*in == '`')
 		{
-			template_string:
+			goto_template_string:;
 
 			int interrupt = 0;
 
 			do
 			{
 				psh_next_byte();
-				psh_atleast(1);
+				psh_atleast(0);
 
 				/**
 				 * This is not undefined behavior, because if
@@ -524,7 +536,6 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 					(*in == '{' && *(in - 1) == '$' && *(in - 2) != '\\');
 			}
 			while(
-				!psh_eof() &&
 				(*in != '`' || *(in - 1) == '\\') &&
 				!interrupt
 			);
@@ -558,22 +569,24 @@ psh_tokenize(const struct psh_source* const src, struct psh_tokens* const out)
 
 		psh_add_token(psh_token_word);
 		psh_set_as_last_token();
-		psh_hash_word(psh_last_token);
-
-		continue;
+		psh_last_token->regexp_word = psh_hash_lookup(&out->regexp_word_hashes,
+			(char*) psh_last_token->token, psh_last_token->len);
 	}
 
+#undef psh_add_token
 #undef psh_extend_token
 #undef psh_eof
 #undef psh_token_len
 #undef psh_next_byte
 #undef psh_atleast
 #undef psh_set_as_last_token
-#undef psh_add_token
+
+	sem_post(&out->producer, out->used % psh_rate_tokenizer);
 
 	return psh_ok;
 
-	err_unexpected:
+
+	goto_unexpected:
 
 	return psh_unexpected_end;
 }

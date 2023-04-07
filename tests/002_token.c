@@ -1,9 +1,10 @@
-#include <stdio.h>
 #include <assert.h>
-#include <stdlib.h>
 #include <inttypes.h>
 
 #include <parsher/token.h>
+
+
+struct psh_tokens out = {0};
 
 
 static void
@@ -20,8 +21,6 @@ _test(char* str, uint64_t len, enum psh_status ret, int line,
 		.len = len
 	};
 
-	struct psh_tokens out = {0};
-
 #define log_output()								\
 	do												\
 	{												\
@@ -32,7 +31,7 @@ _test(char* str, uint64_t len, enum psh_status ret, int line,
 			printf(" %d", expected[i]);				\
 		}											\
 													\
-		printf("\ngot            :");				\
+		printf("\n actual  output:");				\
 													\
 		for(uint64_t i = 0; i < expected_len; ++i)	\
 		{											\
@@ -42,6 +41,8 @@ _test(char* str, uint64_t len, enum psh_status ret, int line,
 		puts("");									\
 	}												\
 	while(0)
+
+	psh_tokens_reset(&out);
 
 	enum psh_status stat = psh_tokenize(&source, &out);
 
@@ -70,11 +71,10 @@ _test(char* str, uint64_t len, enum psh_status ret, int line,
 		{
 			printf("token type mismatch, expected %d, got %d\n",
 				expected[i], out.tokens[i].type);
+
 			assert(0);
 		}
 	}
-
-	free(out.tokens);
 
 	puts("done");
 }
@@ -88,6 +88,8 @@ _test((s), sizeof(s) - 1, r, __LINE__, __VA_ARGS__, \
 int
 main()
 {
+	psh_tokens_init(&out);
+
 	test("", psh_ok,
 		(enum psh_token_type[])
 		{  }
@@ -332,6 +334,8 @@ main()
 			psh_token_template_end
 		}
 	);
+
+	psh_tokens_free(&out);
 
 	return 0;
 }

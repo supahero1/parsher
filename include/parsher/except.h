@@ -5,9 +5,11 @@
 extern "C" {
 #endif
 
+
 __attribute__((noreturn))
 extern void
 psh_nomem(void);
+
 
 #ifdef __cplusplus
 }

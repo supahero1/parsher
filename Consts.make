@@ -39,9 +39,4 @@ ifeq ($(COVERAGE),1)
 CFLAGS += --coverage
 endif
 
-CLIBS = -pthread#-lssl -lcrypto
-
-ifeq ($(WITH_LIBUV),1)
-CFLAGS += -DLIBUV
-CLIBS  += -luv
-endif
+CLIBS = -lcmph

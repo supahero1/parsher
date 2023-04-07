@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 
-
 #include <stdint.h>
 
 
@@ -25,7 +24,7 @@ enum psh_status
 
 
 extern int
-psh_sanitize(struct psh_source* const);
+psh_sanitize(struct psh_source* src);
 
 
 #ifdef __cplusplus

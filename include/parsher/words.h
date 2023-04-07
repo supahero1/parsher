@@ -6,92 +6,61 @@ extern "C" {
 #endif
 
 
-#include <stddef.h>
-
-
-/**
- * Place a comment instead of a tab before a word
- * to exclude it from the gperf hash generation.
- */
-
-enum psh_word
+enum psh_regexp_word
 {
-/**/psh_word_unknown,
-
-	/**
-	 * This first "group" are tokens after which
-	 * a slash symbol means beginning of a regexp.
-	 */
-
-	psh_word_await,
-	psh_word_case,
-	psh_word_delete,
-	psh_word_do,
-	psh_word_export,
-	psh_word_in,
-	psh_word_return,
-	psh_word_throw,
-	psh_word_typeof,
-	psh_word_void,
-	psh_word_yield,
-
-/**/psh_word_preregexp_end,
-
-	psh_word_Infinity,
-	psh_word_NaN,
-	psh_word_arguments,
-	psh_word_as,
-	psh_word_async,
-	psh_word_break,
-	psh_word_catch,
-	psh_word_class,
-	psh_word_const,
-	psh_word_continue,
-	psh_word_debugger,
-	psh_word_default,
-	psh_word_else,
-	psh_word_eval,
-	psh_word_extends,
-	psh_word_false,
-	psh_word_finally,
-	psh_word_for,
-	psh_word_from,
-	psh_word_function,
-	psh_word_get,
-	psh_word_if,
-	psh_word_import,
-	psh_word_instanceof,
-	psh_word_let,
-	psh_word_new,
-	psh_word_null,
-	psh_word_of,
-	psh_word_set,
-	psh_word_static,
-	psh_word_super,
-	psh_word_switch,
-	psh_word_this,
-	psh_word_true,
-	psh_word_try,
-	psh_word_undefined,
-	psh_word_var,
-	psh_word_while,
-	psh_word_with
+	psh_regexp_word_await,
+	psh_regexp_word_case,
+	psh_regexp_word_delete,
+	psh_regexp_word_export,
+	psh_regexp_word_in,
+	psh_regexp_word_return,
+	psh_regexp_word_throw,
+	psh_regexp_word_typeof,
+	psh_regexp_word_void,
+	psh_regexp_word_yield,
+	psh_regexp_word__count
 };
 
 
-struct psh_word_lut
-{
-	const char* str;
+extern char* psh_regexp_word_dict[psh_regexp_word__count];
 
-	const enum psh_word id;
+
+enum psh_keyword
+{
+	psh_keyword_as,
+	psh_keyword_async,
+	psh_keyword_break,
+	psh_keyword_catch,
+	psh_keyword_class,
+	psh_keyword_const,
+	psh_keyword_continue,
+	psh_keyword_debugger,
+	psh_keyword_default,
+	psh_keyword_else,
+	psh_keyword_extends,
+	psh_keyword_finally,
+	psh_keyword_for,
+	psh_keyword_from,
+	psh_keyword_function,
+	psh_keyword_get,
+	psh_keyword_if,
+	psh_keyword_import,
+	psh_keyword_instanceof,
+	psh_keyword_let,
+	psh_keyword_new,
+	psh_keyword_of,
+	psh_keyword_set,
+	psh_keyword_static,
+	psh_keyword_switch,
+	psh_keyword_try,
+	psh_keyword_var,
+	psh_keyword_while,
+	psh_keyword_with,
+	psh_keyword__count
 };
 
 
-extern const size_t psh_max_word_len;
-
-
-extern const struct psh_word_lut*
-psh_lookup_word(const char*, size_t);
+extern char* psh_keyword_dict[psh_keyword__count];
 
 
 #ifdef __cplusplus

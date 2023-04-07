@@ -6,7 +6,9 @@ include Consts.make
 build:
 	$(Q)./sed.sh
 	$(Q)$(MAKE) -C src
+ifneq ($(NO_CLI),1)
 	$(Q)$(MAKE) -C cli
+endif
 	$(FMT_OD)Building complete.$(FMT_DO)
 
 .PHONY: install
@@ -21,7 +23,9 @@ else
 endif
 	$(Q)ldconfig $(DIR_LIB)
 	$(Q)cp -r include/$(PROJECT_NAME) $(DIR_INCLUDE)/
+ifneq ($(NO_CLI),1)
 	$(Q)install $(DIR_OUT)/cli/$(PROJECT_NAME) $(DIR_BIN)/
+endif
 	$(FMT_OD)Installation complete.$(FMT_DO)
 
 .PHONY: test
@@ -56,3 +60,8 @@ uninstall:
 .PHONY: help
 help:
 	$(Q)cat INSTALL
+
+.PHONY: replace
+replace:
+	rm -fr /usr/local/include/$(PROJECT_NAME)
+	cp -r include/$(PROJECT_NAME) /usr/local/include/

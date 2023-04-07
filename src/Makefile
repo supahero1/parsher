@@ -1,5 +1,4 @@
-BUILD_TYPE   := $(BUILD_LIB)
-BUILD_NAME    = $(PROJECT_NAME)
-BUILD_SUBDIRS = words
+BUILD_TYPE := $(BUILD_LIB)
+BUILD_NAME  = $(PROJECT_NAME)
 
 include $(DIR_TOP)/Rules.make
