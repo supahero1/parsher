@@ -11,19 +11,11 @@ extern "C" {
 struct psh_source
 {
     const uint8_t* arr;
-
-    uint64_t len;
+    uint32_t len;
 };
 
 
-enum psh_status
-{
-    psh_ok,
-    psh_unexpected_end
-};
-
-
-extern int
+extern void
 psh_sanitize(struct psh_source* src);
 
 

@@ -1,5 +1,5 @@
 #include <parsher/hash.h>
-#include <parsher/except.h>
+#include <parsher/memory.h>
 
 #include <string.h>
 
@@ -7,6 +7,11 @@
 void
 psh_hash_init(struct psh_hashes* hashes, char** dict, uint32_t count)
 {
+	if(hashes->source)
+	{
+		return;
+	}
+
 	hashes->source = cmph_io_vector_adapter(dict, count);
 
 	if(!hashes->source)

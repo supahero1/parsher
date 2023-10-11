@@ -13,8 +13,7 @@ extern "C" {
 struct psh_hash
 {
 	uint32_t len;
-
-	int32_t idx;
+	uint32_t idx;
 };
 
 
@@ -39,6 +38,9 @@ psh_hash_free(const struct psh_hashes* hashes);
 
 extern int32_t
 psh_hash_lookup(const struct psh_hashes* hashes, const char* str, uint32_t len);
+
+
+
 
 
 #ifdef __cplusplus

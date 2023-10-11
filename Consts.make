@@ -43,4 +43,8 @@ ifeq ($(COVERAGE),1)
 CFLAGS += --coverage
 endif
 
+ifeq ($(OPT),1)
+CFLAGS += -march=native
+endif
+
 CLIBS = -lcmph
